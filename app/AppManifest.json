@@ -11,6 +11,14 @@
                         {
                             "path": "Vehicle.Speed",
                             "access": "read"
+                        },
+                        {
+                            "path": "Vehicle.AverageSpeed",
+                            "access": "read"
+                        },
+                        {
+                            "path": "Vehicle.IsMoving",
+                            "access": "read"
                         }
                     ]
                 }
@@ -20,11 +28,17 @@
             "type": "pubsub",
             "config": {
                 "reads": [
-                    "sampleapp/getSpeed"
+                    "sampleapp/getSpeed",
+                    "sampleapp/getAverageSpeed",
+                    "sampleapp/getIsMoving"
                 ],
                 "writes": [
                     "sampleapp/getSpeed/response",
-                    "sampleapp/currentSpeed"
+                    "sampleapp/getAverageSpeed/response",
+                    "sampleapp/getIsMoving/response",
+                    "sampleapp/currentSpeed",
+                    "sampleapp/currentAverageSpeed",
+                    "sampleapp/currentIsMoving"
                 ]
             }
         }

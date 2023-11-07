@@ -12,8 +12,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""A sample skeleton vehicle app."""
-
+# ------------------------------------------------------------------------------
 import asyncio
 import json
 import logging
@@ -27,100 +26,142 @@ from velocitas_sdk.util.log import (  # type: ignore
 from velocitas_sdk.vdb.reply import DataPointReply
 from velocitas_sdk.vehicle_app import VehicleApp, subscribe_topic
 
-# Configure the VehicleApp logger with the necessary log config and level.
+# ------------------------------------------------------------------------------
 logging.setLogRecordFactory(get_opentelemetry_log_factory())
 logging.basicConfig(format=get_opentelemetry_log_format())
 logging.getLogger().setLevel("DEBUG")
 logger = logging.getLogger(__name__)
 
-GET_SPEED_REQUEST_TOPIC = "sampleapp/getSpeed"
-GET_SPEED_RESPONSE_TOPIC = "sampleapp/getSpeed/response"
-DATABROKER_SUBSCRIPTION_TOPIC = "sampleapp/currentSpeed"
+# ------------------------------------------------------------------------------
+APP = "sampleapp/"
+GET_TOPIC = {
+    "Speed": {
+        "REQUEST": f"{APP}getSpeed/",
+        "RESPONSE": f"{APP}getSpeed/response"
+    },
+    "AverageSpeed": {
+        "REQUEST": f"{APP}getAverageSpeed/",
+        "RESPONSE": f"{APP}getAverageSpeed/response",
+    },
+    "IsMoving": {
+        "REQUEST": f"{APP}getIsMoving/",
+        "RESPONSE": f"{APP}getIsMoving/response"
+    },
+}
+DATABROKER_TOPIC = {
+    "Speed": f"{APP}currentSpeed/",
+    "AverageSpeed": f"{APP}currentAverageSpeed/",
+    "IsMoving": f"{APP}currentIsMoving/",
+}
 
 
+# ------------------------------------------------------------------------------
 class SampleApp(VehicleApp):
-    """
-    Sample skeleton vehicle app.
-
-    The skeleton subscribes to a getSpeed MQTT topic
-    to listen for incoming requests to get
-    the current vehicle speed and publishes it to
-    a response topic.
-
-    It also subcribes to the VehicleDataBroker
-    directly for updates of the
-    Vehicle.Speed signal and publishes this
-    information via another specific MQTT topic
-    """
-
+    # --------------------------------------------------------------------------
     def __init__(self, vehicle_client: Vehicle):
-        # SampleApp inherits from VehicleApp.
         super().__init__()
         self.Vehicle = vehicle_client
 
     async def on_start(self):
-        """Run when the vehicle app starts"""
-        # This method will be called by the SDK when the connection to the
-        # Vehicle DataBroker is ready.
-        # Here you can subscribe for the Vehicle Signals update (e.g. Vehicle Speed).
-        await self.Vehicle.Speed.subscribe(self.on_speed_change)
+        await self.Vehicle.Speed.subscribe(self.on_change_speed)
+        await self.Vehicle.AverageSpeed.subscribe(self.on_change_averagespeed)
+        await self.Vehicle.IsMoving.subscribe(self.on_change_ismoving)
 
-    async def on_speed_change(self, data: DataPointReply):
-        """The on_speed_change callback, this will be executed when receiving a new
-        vehicle signal updates."""
-        # Get the current vehicle speed value from the received DatapointReply.
-        # The DatapointReply containes the values of all subscribed DataPoints of
-        # the same callback.
-        vehicle_speed = data.get(self.Vehicle.Speed).value
-
-        # Do anything with the received value.
-        # Example:
-        # - Publishes current speed to MQTT Topic (i.e. DATABROKER_SUBSCRIPTION_TOPIC).
+    # --------------------------------------------------------------------------
+    async def on_change_speed(self, data: DataPointReply):
+        subject = "Speed"
+        value = data.get(self.Vehicle.Speed).value
         await self.publish_event(
-            DATABROKER_SUBSCRIPTION_TOPIC,
-            json.dumps({"speed!": vehicle_speed}),
+            DATABROKER_TOPIC[subject],
+            json.dumps({DATABROKER_TOPIC[subject]: value}),
         )
 
-    @subscribe_topic(GET_SPEED_REQUEST_TOPIC)
-    async def on_get_speed_request_received(self, data: str) -> None:
-        """The subscribe_topic annotation is used to subscribe for incoming
-        PubSub events, e.g. MQTT event for GET_SPEED_REQUEST_TOPIC.
-        """
+    async def on_change_averagespeed(self, data: DataPointReply):
+        subject = "AverageSpeed"
+        value = data.get(self.Vehicle.Speed).value
+        await self.publish_event(
+            DATABROKER_TOPIC[subject],
+            json.dumps({DATABROKER_TOPIC[subject]: value}),
+        )
 
-        # Use the logger with the preferred log level (e.g. debug, info, error, etc)
+    async def on_change_ismoving(self, data: DataPointReply):
+        subject = "IsMoving"
+        value = data.get(self.Vehicle.Speed).value
+        await self.publish_event(
+            DATABROKER_TOPIC[subject],
+            json.dumps({DATABROKER_TOPIC[subject]: value}),
+        )
+
+    # --------------------------------------------------------------------------
+    @subscribe_topic(GET_TOPIC["AverageSpeed"]["REQUEST"])
+    async def on_get_average_speed_request_received(self, data: str) -> None:
         logger.debug(
             "PubSub event for the Topic: %s -> is received with the data: %s",
-            GET_SPEED_REQUEST_TOPIC,
+            GET_TOPIC["AverageSpeed"]["REQUEST"],
             data,
         )
-
-        # Getting current speed from VehicleDataBroker using the DataPoint getter.
-        vehicle_speed = (await self.Vehicle.Speed.get()).value
-
-        # Do anything with the speed value.
-        # Example:
-        # - Publishes the vehicle speed to MQTT topic (i.e. GET_SPEED_RESPONSE_TOPIC).
+        value = (await self.Vehicle.AverageSpeed.get()).value
         await self.publish_event(
-            GET_SPEED_RESPONSE_TOPIC,
+            GET_TOPIC["AverageSpeed"]["Response"],
             json.dumps(
                 {
                     "result": {
                         "status": 0,
-                        "message": f"""Current !Speed = {vehicle_speed}""",
+                        "message": f"AverageSpeed = {value}",
+                    },
+                }
+            ),
+        )
+
+    @subscribe_topic(GET_TOPIC["Speed"]["REQUEST"])
+    async def on_get_speed_request_received(self, data: str) -> None:
+        logger.debug(
+            "PubSub event for the Topic: %s -> is received with the data: %s",
+            GET_TOPIC["Speed"]["REQUEST"],
+            data,
+        )
+        value = (await self.Vehicle.Speed.get()).value
+        await self.publish_event(
+            GET_TOPIC["Speed"]["Response"],
+            json.dumps(
+                {
+                    "result": {
+                        "status": 0,
+                        "message": f"speed = {value}",
+                    },
+                }
+            ),
+        )
+    
+    @subscribe_topic(GET_TOPIC["IsMoving"]["REQUEST"])
+    async def on_get_is_moving_request_received(self, data: str) -> None:
+        logger.debug(
+            "PubSub event for the Topic: %s -> is received with the data: %s",
+            GET_TOPIC["IsMoving"]["REQUEST"],
+            data,
+        )
+        value = (await self.Vehicle.IsMoving.get()).value
+        await self.publish_event(
+            GET_TOPIC["IsMoving"]["Response"],
+            json.dumps(
+                {
+                    "result": {
+                        "status": 0,
+                        "message": f"IsMoving = {value}",
                     },
                 }
             ),
         )
 
 
+# ------------------------------------------------------------------------------
 async def main():
-    """Main function"""
     logger.info("Starting SampleApp...")
-    # Constructing SampleApp and running it.
     vehicle_app = SampleApp(vehicle)
     await vehicle_app.run()
 
 
+# ------------------------------------------------------------------------------
 LOOP = asyncio.get_event_loop()
 LOOP.add_signal_handler(signal.SIGTERM, LOOP.stop)
 LOOP.run_until_complete(main())
