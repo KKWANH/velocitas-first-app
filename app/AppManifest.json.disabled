@@ -1,6 +1,6 @@
 {
     "manifestVersion": "v3",
-    "name": "crash_detector",
+    "name": "SampleApp",
     "interfaces": [
         {
             "type": "vehicle-signal-interface",
@@ -24,11 +24,14 @@
             "type": "pubsub",
             "config": {
                 "reads": [
-                    "crash_detector/getSpeed"
+                    "sampleapp/getSpeed",
+                    "sampleapp/getIsMoving"
                 ],
                 "writes": [
-                    "crash_detector/getSpeed/response",
-                    "crash_detector/currentSpeed"
+                    "sampleapp/getSpeed/response",
+                    "sampleapp/getIsMoving/response",
+                    "sampleapp/currentSpeed",
+                    "sampleapp/currentIsMoving"
                 ]
             }
         }
